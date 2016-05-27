@@ -2,7 +2,6 @@ from lxml import html
 from lxml.cssselect import CSSSelector
 import requests
 import sys as Sys
-
 # Print iterations progress
 def printProgress (iteration, total, prefix = '', suffix = '', decimals = 2, barLength = 100):
     """
@@ -27,24 +26,36 @@ folder = u"farmostwood/"
 url = "http://blog.farmostwood.net/sitemap" 
 sitemap = html.fromstring(requests.get(url).content)
 
-sel = CSSSelector("div.ddsg-wrapper>ul>li>ul>li>a")
-allnode = sel(sitemap)
-post_count = len(allnode)
-cur_count = 0
+except_list = [u"Photo", u"Fiction", u"Movie"]
+category_select = CSSSelector("div.ddsg-wrapper>ul>li")
+category_title_select = CSSSelector("div.ddsg-wrapper>ul>li>a")
+post_title_select = CSSSelector("ul>li>a")
+category_nodes = category_select(sitemap)
+category_titles = category_title_select(sitemap)
+category_count = len(category_nodes)
 
-for node in allnode:
-    try:
-        post_url = node.get("href")
-        post_html = html.fromstring(requests.get(post_url).content)
-        post_select = CSSSelector(".entrytext")
-        title_select = CSSSelector("h1>a>img")
-        title_text = title_select(post_html)[0].get("alt")
-        title = (u"<h1>" + title_text + u"</h1>").encode("utf-8")
-        post = html.tostring(post_select(post_html)[0]).encode("utf-8")
-        with open(folder + title_text + u".html", "w+") as f:
-            f.write(title)
-            f.write(post);
-        cur_count = cur_count + 1
-        printProgress(cur_count, post_count) 
-    except Exception:
-        print "Error scrapping: " + post_url
+for i in range(category_count):
+    if category_titles[i].text not in except_list:
+        post_nodes_in_category = post_title_select(category_nodes[i])
+        print "Scrapping articles in " + category_titles[i].text + "..."
+               
+        cur_count = 0
+        post_count_in_category = len(post_nodes_in_category)
+        for node in post_nodes_in_category:
+            try:
+                cur_count = cur_count + 1
+                printProgress(cur_count, post_count_in_category)
+
+                post_url = node.get("href")
+                post_html = html.fromstring(requests.get(post_url).content)
+                post_select = CSSSelector(".entrytext")
+                title_select = CSSSelector("h1>a>img")
+                title_text = title_select(post_html)[0].get("alt")
+                title = (u"<h1>" + title_text + u"</h1>").encode("utf-8")
+                post = html.tostring(post_select(post_html)[0]).encode("utf-8")
+                filepath = folder + title_text + u".html"
+                with open(filepath, "w+") as f:
+                    f.write(title)
+                    f.write(post)
+            except Exception:                    
+                print "Error scrapping: " + post_url
